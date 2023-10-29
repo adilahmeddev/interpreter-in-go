@@ -47,6 +47,8 @@ func (p *Parser) parseStatement() ast.Statement {
 	switch p.curToken.Type {
 	case token.LET:
 		return p.parseLetStatement()
+	case token.RETURN:
+		return p.parseReturnStatement()
 	default:
 		return nil
 	}
@@ -69,6 +71,22 @@ func (p *Parser) parseLetStatement() ast.Statement {
 		p.peekError(token.ASSIGN)
 		return nil
 	}
+	p.nextToken()
+	for p.peekToken.Type != token.SEMICOLON {
+		p.nextToken()
+	}
+	return &stmt
+}
+
+func (p *Parser) parseReturnStatement() ast.Statement {
+	stmt := ast.ReturnStatement{
+		Token: p.curToken,
+	}
+	if p.curToken.Type != token.RETURN {
+		p.peekError(token.RETURN)
+		return nil
+	}
+
 	p.nextToken()
 	for p.peekToken.Type != token.SEMICOLON {
 		p.nextToken()
