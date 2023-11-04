@@ -36,19 +36,55 @@ func (p *Parser) nextToken() {
 	p.peekToken = p.l.NextToken()
 }
 
+var precedences = map[token.TokenType]int{
+	token.EQ:       EQUALS,
+	token.NOT_EQ:   EQUALS,
+	token.LT:       LESSGREATER,
+	token.GT:       LESSGREATER,
+	token.PLUS:     SUM,
+	token.MINUS:    SUM,
+	token.SLASH:    PRODUCT,
+	token.ASTERISK: PRODUCT,
+}
+
 func New(l *lexer.Lexer) *Parser {
 	p := &Parser{l: l,
 		errors: []string{}}
-	p.nextToken()
-	p.nextToken()
 
 	p.prefixParseFns = make(map[token.TokenType]prefixParseFn)
 	p.registerPrefix(token.IDENT, p.parseIdentifier)
 	p.registerPrefix(token.INT, p.parseIntegerLiteral)
-
 	p.registerPrefix(token.BANG, p.parsePrefixExpression)
 	p.registerPrefix(token.MINUS, p.parsePrefixExpression)
+
+	p.infixParseFns = make(map[token.TokenType]infixParseFn)
+	p.registerInfix(token.PLUS, p.parseInfixExpression)
+	p.registerInfix(token.MINUS, p.parseInfixExpression)
+	p.registerInfix(token.SLASH, p.parseInfixExpression)
+	p.registerInfix(token.ASTERISK, p.parseInfixExpression)
+	p.registerInfix(token.EQ, p.parseInfixExpression)
+	p.registerInfix(token.NOT_EQ, p.parseInfixExpression)
+	p.registerInfix(token.LT, p.parseInfixExpression)
+	p.registerInfix(token.GT, p.parseInfixExpression)
+	// p.registerInfix(token.SEMICOLON, p.parseInfixExpression)
+
+	p.nextToken()
+	p.nextToken()
 	return p
+}
+
+func (p *Parser) peekPrecendce() int {
+	if pr, ok := precedences[p.peekToken.Type]; ok {
+		return pr
+	}
+	return LOWEST
+}
+
+func (p *Parser) curPrecendce() int {
+	if pr, ok := precedences[p.curToken.Type]; ok {
+		return pr
+	}
+	return LOWEST
 }
 
 func (p *Parser) parseIdentifier() ast.Expression {
@@ -80,26 +116,33 @@ func (p *Parser) parseStatement() ast.Statement {
 		return p.parseExpressionStatement()
 	}
 }
+func (p *Parser) expectPeek(t token.TokenType) bool {
+	if p.peekTokenIs(t) {
+		p.nextToken()
+		return true
+	} else {
+		p.peekError(t)
+		return false
+	}
+}
 
 func (p *Parser) parseLetStatement() ast.Statement {
 	stmt := ast.LetStatement{
 		Token: p.curToken,
 	}
-	if p.peekToken.Type != token.IDENT {
-		p.peekError(token.IDENT)
+	if !p.expectPeek(token.IDENT) {
 		return nil
 	}
-	p.nextToken()
 	stmt.Name = &ast.Identifier{
 		Token: p.curToken,
 		Value: p.curToken.Literal,
 	}
+
 	if p.peekToken.Type != token.ASSIGN {
-		p.peekError(token.ASSIGN)
 		return nil
 	}
-	p.nextToken()
-	for p.peekToken.Type != token.SEMICOLON {
+
+	for p.curToken.Type != token.SEMICOLON {
 		p.nextToken()
 	}
 	return &stmt
@@ -109,13 +152,8 @@ func (p *Parser) parseReturnStatement() ast.Statement {
 	stmt := ast.ReturnStatement{
 		Token: p.curToken,
 	}
-	if p.curToken.Type != token.RETURN {
-		p.peekError(token.RETURN)
-		return nil
-	}
 
-	p.nextToken()
-	for p.peekToken.Type != token.SEMICOLON {
+	for p.curToken.Type != token.SEMICOLON {
 		p.nextToken()
 	}
 	return &stmt
@@ -131,7 +169,7 @@ func (p *Parser) peekError(t token.TokenType) {
 
 type (
 	prefixParseFn func() ast.Expression
-	infixParseFn  func(ast.Expression) ast.Expression
+	infixParseFn  func(left ast.Expression) ast.Expression
 )
 
 func (p *Parser) parseExpressionStatement() ast.Statement {
@@ -152,6 +190,17 @@ func (p *Parser) parseExpression(precedence int) ast.Expression {
 		return nil
 	}
 	leftExp := prefix()
+
+	for !p.peekTokenIs(token.SEMICOLON) && precedence < p.peekPrecendce() {
+		infix := p.infixParseFns[p.peekToken.Type]
+		if infix == nil {
+			return leftExp
+		}
+
+		p.nextToken()
+		leftExp = infix(leftExp)
+	}
+
 	return leftExp
 }
 
@@ -200,15 +249,16 @@ func (p *Parser) noInfixParseFnError(tokenType token.TokenType) {
 	p.errors = append(p.errors, msg)
 }
 
-func (p *Parser) parseInfixExpression() ast.Expression {
+func (p *Parser) parseInfixExpression(left ast.Expression) ast.Expression {
 	expression := &ast.InfixExpression{
-		Token: p.curToken,
-		Left:  p.parseExpression(1),
+		Token:    p.curToken,
+		Operator: p.curToken.Literal,
+		Left:     left,
 	}
 
+	precedence := p.curPrecendce()
 	p.nextToken()
-	expression.Operator = p.curToken.Literal
-	p.nextToken()
-	expression.Right = p.parseExpression(PREFIX)
+	expression.Right = p.parseExpression(precedence)
+
 	return expression
 }
