@@ -66,7 +66,6 @@ func New(l *lexer.Lexer) *Parser {
 	p.registerInfix(token.NOT_EQ, p.parseInfixExpression)
 	p.registerInfix(token.LT, p.parseInfixExpression)
 	p.registerInfix(token.GT, p.parseInfixExpression)
-	// p.registerInfix(token.SEMICOLON, p.parseInfixExpression)
 
 	p.nextToken()
 	p.nextToken()
