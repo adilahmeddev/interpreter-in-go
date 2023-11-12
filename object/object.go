@@ -5,9 +5,10 @@ import "fmt"
 type ObjectType string
 
 const (
-	INTEGER_OBJ = "INTEGER"
-	NULL_OBJ    = "NULL"
-	BOOLEAN_OBJ = "BOOLEAN"
+	INTEGER_OBJ      = "INTEGER"
+	NULL_OBJ         = "NULL"
+	BOOLEAN_OBJ      = "BOOLEAN"
+	RETURN_VALUE_OBJ = "RETURN_VALUE"
 )
 
 type Object interface {
@@ -37,3 +38,11 @@ type Null struct {
 func (b *Null) Inspect() string { return "null" }
 
 func (b *Null) Type() ObjectType { return NULL_OBJ }
+
+type ReturnValue struct {
+	Value Object
+}
+
+func (rv *ReturnValue) Inspect() string { return rv.Value.Inspect() }
+
+func (rv *ReturnValue) Type() ObjectType { return rv.Value.Type() }
