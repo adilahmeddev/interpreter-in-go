@@ -51,6 +51,7 @@ const (
 	RPAREN = ")"
 	LBRACE = "{"
 	RBRACE = "}"
+	STRING = `"`
 
 	FUNCTION = "FUNCTION"
 	LET      = "LET"
