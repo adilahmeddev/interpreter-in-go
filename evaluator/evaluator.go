@@ -43,6 +43,8 @@ func Eval(node ast.Node, env *object.Environment) object.Object {
 	// Expressions
 	case *ast.IntegerLiteral:
 		return &object.Integer{Value: node.Value}
+	case *ast.StringLiteral:
+		return &object.String{Value: node.Value}
 	case *ast.FunctionLiteral:
 		params := node.Parameters
 		body := node.Body
@@ -175,6 +177,8 @@ func evalInfixExpression(operator string, left object.Object, right object.Objec
 	switch {
 	case left.Type() == object.INTEGER_OBJ && right.Type() == object.INTEGER_OBJ:
 		return evalIntegerInfixExpression(operator, left, right)
+	case left.Type() == object.STRING_OBJ && right.Type() == object.STRING_OBJ && operator == "+":
+		return &object.String{Value: fmt.Sprintf("%s%s", left.Inspect(), right.Inspect())}
 	case operator == "==":
 		return nativeBoolToBooleanObject(left == right)
 	case operator == "!=":
