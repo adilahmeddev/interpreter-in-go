@@ -24,6 +24,7 @@ return false;
 10 != 9;
 "hello world";
 [1,2];
+{"hello":"world"}
 `
 
 	tests := []struct {
@@ -111,6 +112,11 @@ return false;
 		{token.INT, "2"},
 		{token.RBRACKET, "]"},
 		{token.SEMICOLON, ";"},
+		{token.LBRACE, "{"},
+		{token.STRING, "hello"},
+		{token.COLON, ":"},
+		{token.STRING, "world"},
+		{token.RBRACE, "}"},
 		{token.EOF, ""},
 	}
 

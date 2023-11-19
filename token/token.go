@@ -54,6 +54,7 @@ const (
 	LBRACKET = "["
 	RBRACKET = "]"
 	STRING   = `"`
+	COLON    = ":"
 
 	FUNCTION = "FUNCTION"
 	LET      = "LET"
