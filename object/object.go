@@ -18,6 +18,7 @@ const (
 	ERROR_OBJ        = "ERROR"
 	FUNCTION_OBJ     = "FUNCTION"
 	BUILTIN_OBJ      = "BUILTIN"
+	ARRAY_OBJ        = "ARRAY"
 )
 
 type Object interface {
@@ -49,8 +50,7 @@ func (b *Boolean) Inspect() string { return fmt.Sprintf("%t", b.Value) }
 
 func (b *Boolean) Type() ObjectType { return BOOLEAN_OBJ }
 
-type Null struct {
-}
+type Null struct{}
 
 func (b *Null) Inspect() string { return "null" }
 
@@ -71,6 +71,27 @@ type Error struct {
 func (e *Error) Inspect() string { return "ERROR: " + e.Message }
 
 func (e *Error) Type() ObjectType { return ERROR_OBJ }
+
+type Array struct {
+	Elements []Object
+}
+
+func (a *Array) Inspect() string {
+	var out bytes.Buffer
+
+	params := []string{}
+	for _, e := range a.Elements {
+		params = append(params, e.Inspect())
+	}
+
+	out.WriteString("[")
+	out.WriteString(strings.Join(params, ", "))
+	out.WriteString("]")
+
+	return out.String()
+}
+
+func (a *Array) Type() ObjectType { return ARRAY_OBJ }
 
 type Function struct {
 	Parameters []*ast.Identifier

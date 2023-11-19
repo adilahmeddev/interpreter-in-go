@@ -2,7 +2,6 @@ package parser
 
 import (
 	"fmt"
-
 	"interpreter-in-go/ast"
 	"interpreter-in-go/lexer"
 	"interpreter-in-go/token"
@@ -18,6 +17,7 @@ const (
 	PRODUCT     // *
 	PREFIX      // -X or !X
 	CALL        // myFunction(X)
+	INDEX
 )
 
 type Parser struct {
@@ -37,6 +37,7 @@ func (p *Parser) nextToken() {
 }
 
 var precedences = map[token.TokenType]int{
+	token.LBRACKET: INDEX,
 	token.LPAREN:   CALL,
 	token.EQ:       EQUALS,
 	token.NOT_EQ:   EQUALS,
@@ -49,8 +50,10 @@ var precedences = map[token.TokenType]int{
 }
 
 func New(l *lexer.Lexer) *Parser {
-	p := &Parser{l: l,
-		errors: []string{}}
+	p := &Parser{
+		l:      l,
+		errors: []string{},
+	}
 
 	p.prefixParseFns = make(map[token.TokenType]prefixParseFn)
 	p.registerPrefix(token.IDENT, p.parseIdentifier)
@@ -75,15 +78,28 @@ func New(l *lexer.Lexer) *Parser {
 	p.registerInfix(token.LT, p.parseInfixExpression)
 	p.registerInfix(token.GT, p.parseInfixExpression)
 	p.registerInfix(token.LPAREN, p.parseCallExpression)
+	p.registerInfix(token.LBRACKET, p.parseIndexExpression)
 	p.nextToken()
 	p.nextToken()
 	return p
 }
+
+func (p *Parser) parseIndexExpression(left ast.Expression) ast.Expression {
+	exp := &ast.IndexExpression{Token: p.curToken, Left: left}
+	p.nextToken()
+	exp.Index = p.parseExpression(LOWEST)
+	if !p.expectPeek(token.RBRACKET) {
+		return nil
+	}
+	return exp
+}
+
 func (p *Parser) parseArrayLiteral() ast.Expression {
 	array := &ast.ArrayLiteral{Token: p.curToken}
 	array.Elements = p.parseExpressionList(token.RBRACKET)
 	return array
 }
+
 func (p *Parser) peekPrecendce() int {
 	if pr, ok := precedences[p.peekToken.Type]; ok {
 		return pr
@@ -127,6 +143,7 @@ func (p *Parser) parseStatement() ast.Statement {
 		return p.parseExpressionStatement()
 	}
 }
+
 func (p *Parser) expectPeek(t token.TokenType) bool {
 	if p.peekTokenIs(t) {
 		p.nextToken()
@@ -177,6 +194,7 @@ func (p *Parser) parseReturnStatement() ast.Statement {
 func (p *Parser) Errors() []string {
 	return p.errors
 }
+
 func (p *Parser) peekError(t token.TokenType) {
 	msg := fmt.Sprintf("expected next token to be %s, got %s instead",
 		t, p.peekToken.Type)
